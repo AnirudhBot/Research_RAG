@@ -1,0 +1,18 @@
+# Environment variables
+.env
+
+.DS_Store
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+.venv
+venv/
+env/
+
+.idea/
+.vscode/
+
+qdrant_storage/ 
