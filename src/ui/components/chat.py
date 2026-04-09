@@ -1,58 +1,68 @@
 import streamlit as st
 from langchain_core.messages import AIMessage, HumanMessage
 
-# newly added imports for table rendering
-import pandas as pd
-import io
 
 def render_chat_interface():
     """Render the chat interface."""
-    display_chat_history()
-    handle_user_input()
+    _display_chat_history()
+    _handle_user_input()
 
-def display_chat_history():
-    """Display chat messages."""
+
+def _display_chat_history():
     for message in st.session_state.chat_history:
         role = "AI" if isinstance(message, AIMessage) else "Human"
         with st.chat_message(role):
             st.markdown(message.content)
 
-def handle_user_input():
-    """Process user input and generate responses, rendering tables if returned."""
-    if query := st.chat_input("Ask about your documents..."):
-        if not st.session_state.conversation_rag_chain:
-            st.error("Please upload and process documents first.")
-            return
 
-        # Display user message
-        st.chat_message("Human").markdown(query)
-        st.session_state.chat_history.append(HumanMessage(content=query))
+def _handle_user_input():
+    query = st.chat_input("Ask about your documents...")
+    if not query:
+        return
 
-        with st.spinner("Thinking..."):
-            try:
-                # invoke RAG chain
-                result = st.session_state.conversation_rag_chain.invoke({
-                    "chat_history": st.session_state.chat_history,
-                    "input": query
-                })
+    if not st.session_state.conversation_rag_chain:
+        st.error("Please upload and process documents first.")
+        return
 
-                # extract answer & source_documents
-                answer = result.get("answer") or result.get("text", "")
-                source_docs = result.get("source_documents", [])
+    st.chat_message("Human").markdown(query)
+    st.session_state.chat_history.append(HumanMessage(content=query))
 
-                # display the LLM answer
-                st.chat_message("AI").markdown(answer)
-                st.session_state.chat_history.append(AIMessage(content=answer))
+    with st.spinner("Thinking..."):
+        try:
+            result = st.session_state.conversation_rag_chain.invoke({
+                "chat_history": st.session_state.chat_history,
+                "input": query,
+            })
 
-                # render any tables that were retrieved
-                for doc in source_docs:
-                    if doc.metadata.get("type") == "table":
-                        src = doc.metadata.get("source", "unknown")
-                        pg  = doc.metadata.get("page", "?")
-                        st.markdown(f"**Table from {src} (page {pg})**")
-                        df = pd.read_csv(io.StringIO(doc.page_content))
-                        st.dataframe(df)
+            answer = result.get("answer", "")
+            context_docs = result.get("context", [])
 
-            except Exception as e:
-                st.error(f"Error generating response: {e}")
+            # Display the LLM answer (may already contain markdown tables)
+            st.chat_message("AI").markdown(answer)
+            st.session_state.chat_history.append(AIMessage(content=answer))
 
+            # Show retrieved images inline if they were part of the context
+            _render_source_images(context_docs)
+
+        except Exception as e:
+            st.error(f"Error generating response: {e}")
+
+
+def _render_source_images(context_docs: list):
+    """Display any images that were retrieved as supporting context."""
+    image_cache = st.session_state.get("image_cache", {})
+
+    for doc in context_docs:
+        if doc.metadata.get("content_type") != "image":
+            continue
+
+        cache_key = doc.metadata.get("image_cache_key")
+        if not cache_key or cache_key not in image_cache:
+            continue
+
+        cached = image_cache[cache_key]
+        source = doc.metadata.get("source", "unknown")
+        page = doc.metadata.get("page", "?")
+
+        with st.expander(f"Figure from {source} (page {page})", expanded=False):
+            st.image(cached["bytes"], use_container_width=True)

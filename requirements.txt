@@ -1,19 +1,17 @@
-streamlit==1.32.2
+streamlit==1.50.0
 python-dotenv==1.0.1
-langchain-core==0.1.31
 
-# Required for LangChain functionality
-langchain==0.1.12
-langchain-openai==0.0.8
-langchain-community==0.0.28
-langchain-qdrant==0.0.1
-qdrant-client==1.8.0
+# LLM & RAG
+langchain==0.3.28
+langchain-core>=0.3.0
+langchain-openai==0.3.35
+langchain-qdrant==0.2.1
+qdrant-client==1.16.1
 
-# Required for PDF processing
-pypdf==4.1.0
-unstructured[pdf]==0.12.5
-pdf2image==1.17.0
-pytesseract==0.3.10
-poppler-utils
-camelot-py
-opencv-python
+# PDF processing
+PyMuPDF==1.25.5
+pdfplumber==0.11.9
+Pillow>=10.0.0
+
+# Image description via multimodal LLM (uses openai already installed above)
+opencv-python-headless>=4.9.0
